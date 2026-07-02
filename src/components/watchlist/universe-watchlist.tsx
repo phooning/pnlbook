@@ -1,6 +1,7 @@
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Plus, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { Button } from "#/components/ui/button.tsx";
 import universe from "#/constants/universe.json";
 
 type AssetClass = "equity" | "etf" | "fund" | "index" | "crypto" | "futures";
@@ -88,8 +89,8 @@ const columns: Array<ColumnDefinition> = [
 	{
 		id: "symbol",
 		label: "Symbol",
-		defaultWidth: 90,
-		minWidth: 80,
+		defaultWidth: 124,
+		minWidth: 112,
 		sortable: true,
 	},
 	{
@@ -194,9 +195,41 @@ const totalMemberships = universeData.watchlists.reduce(
 const uniqueSymbols = new Set(
 	universeData.watchlists.flatMap((group) => group.symbols),
 ).size;
+const universeRows = watchlistSections.flatMap((section) =>
+	section.groups.flatMap((group) => group.rows),
+);
+const rowsBySymbol = universeRows.reduce<Map<string, WatchlistRow>>(
+	(rows, row) => {
+		if (!rows.has(row.symbol)) {
+			rows.set(row.symbol, row);
+		}
+
+		return rows;
+	},
+	new Map(),
+);
+const defaultPrimarySymbols = ["SPY", "QQQ", "AAPL", "MSFT", "NVDA"].filter(
+	(symbol) => rowsBySymbol.has(symbol),
+);
 
 export function UniverseWatchlist() {
 	const [collapsedGroups, setCollapsedGroups] = useState<CollapsedGroups>({});
+	const [primarySymbols, setPrimarySymbols] = useState(
+		() => defaultPrimarySymbols,
+	);
+	const primarySymbolSet = useMemo(
+		() => new Set(primarySymbols),
+		[primarySymbols],
+	);
+	const primaryRows = useMemo(
+		() =>
+			primarySymbols.flatMap((symbol) => {
+				const row = rowsBySymbol.get(symbol);
+
+				return row ? [row] : [];
+			}),
+		[primarySymbols],
+	);
 
 	function toggleGroupCollapsed(groupId: string) {
 		setCollapsedGroups((current) => ({
@@ -217,57 +250,265 @@ export function UniverseWatchlist() {
 		}
 	}
 
+	function addPrimarySymbol(symbol: string) {
+		setPrimarySymbols((current) =>
+			current.includes(symbol) ? current : [...current, symbol],
+		);
+	}
+
+	function removePrimarySymbol(symbol: string) {
+		setPrimarySymbols((current) =>
+			current.filter((currentSymbol) => currentSymbol !== symbol),
+		);
+	}
+
+	function togglePrimarySymbol(symbol: string) {
+		setPrimarySymbols((current) =>
+			current.includes(symbol)
+				? current.filter((currentSymbol) => currentSymbol !== symbol)
+				: [...current, symbol],
+		);
+	}
+
 	return (
-		<section>
-			<header className="mb-4 flex items-end justify-between gap-4">
+		<>
+			<PrimaryWatchlist
+				rows={primaryRows}
+				onAddSymbol={addPrimarySymbol}
+				onRemoveSymbol={removePrimarySymbol}
+			/>
+
+			<section>
+				<header className="mb-4 flex items-end justify-between gap-4">
+					<div>
+						<h2 className="text-lg font-semibold text-white">
+							Watchlist Universe
+						</h2>
+						<p className="mt-1 max-w-2xl text-xs text-neutral-500">
+							{universeData.meta.philosophy}
+						</p>
+					</div>
+					<div className="grid grid-cols-3 gap-2 text-right text-xs">
+						<Metric label="Groups" value={universeData.watchlists.length} />
+						<Metric label="Rows" value={totalMemberships} />
+						<Metric label="Symbols" value={uniqueSymbols} />
+					</div>
+				</header>
+
+				<div className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_16rem]">
+					<div className="min-w-0 space-y-6">
+						{watchlistSections.map((section) => (
+							<section key={section.assetClass} className="space-y-3">
+								<div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+									<h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+										{formatAssetClass(section.assetClass)}
+									</h3>
+									<span className="text-xs text-neutral-600">
+										{section.groups.length} groups / {section.symbolCount} rows
+									</span>
+								</div>
+
+								<div className="space-y-4">
+									{section.groups.map((group) => (
+										<WatchlistGroupTable
+											key={group.id}
+											group={group}
+											isCollapsed={collapsedGroups[group.id] ?? false}
+											primarySymbolSet={primarySymbolSet}
+											onToggleCollapsed={toggleGroupCollapsed}
+											onTogglePrimarySymbol={togglePrimarySymbol}
+										/>
+									))}
+								</div>
+							</section>
+						))}
+					</div>
+
+					<WatchlistTableOfContents
+						collapsedGroups={collapsedGroups}
+						onJumpToGroup={jumpToGroup}
+					/>
+				</div>
+			</section>
+		</>
+	);
+}
+
+function PrimaryWatchlist({
+	rows,
+	onAddSymbol,
+	onRemoveSymbol,
+}: {
+	rows: Array<WatchlistRow>;
+	onAddSymbol: (symbol: string) => void;
+	onRemoveSymbol: (symbol: string) => void;
+}) {
+	return (
+		<section className="mb-10">
+			<header className="mb-4 flex flex-wrap items-end justify-between gap-3">
 				<div>
 					<h2 className="text-lg font-semibold text-white">
-						Watchlist Universe
+						Primary Watchlist
 					</h2>
-					<p className="mt-1 max-w-2xl text-xs text-neutral-500">
-						{universeData.meta.philosophy}
+					<p className="mt-1 text-xs text-neutral-500">
+						{rows.length} active symbols
 					</p>
 				</div>
-				<div className="grid grid-cols-3 gap-2 text-right text-xs">
-					<Metric label="Groups" value={universeData.watchlists.length} />
-					<Metric label="Rows" value={totalMemberships} />
-					<Metric label="Symbols" value={uniqueSymbols} />
-				</div>
+				<Button
+					type="button"
+					variant="outline"
+					size="sm"
+					className="border-neutral-800 bg-neutral-950 text-neutral-400 hover:bg-neutral-900 hover:text-white"
+					disabled={defaultPrimarySymbols.every((symbol) =>
+						rows.some((row) => row.symbol === symbol),
+					)}
+					onClick={() => {
+						for (const symbol of defaultPrimarySymbols) {
+							onAddSymbol(symbol);
+						}
+					}}
+				>
+					<Plus />
+					Reset
+				</Button>
 			</header>
 
-			<div className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_16rem]">
-				<div className="min-w-0 space-y-6">
-					{watchlistSections.map((section) => (
-						<section key={section.assetClass} className="space-y-3">
-							<div className="flex items-center justify-between border-b border-neutral-800 pb-2">
-								<h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-									{formatAssetClass(section.assetClass)}
-								</h3>
-								<span className="text-xs text-neutral-600">
-									{section.groups.length} groups / {section.symbolCount} rows
-								</span>
-							</div>
-
-							<div className="space-y-4">
-								{section.groups.map((group) => (
-									<WatchlistGroupTable
-										key={group.id}
-										group={group}
-										isCollapsed={collapsedGroups[group.id] ?? false}
-										onToggleCollapsed={toggleGroupCollapsed}
-									/>
-								))}
-							</div>
-						</section>
+			{rows.length > 0 ? (
+				<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+					{rows.map((row) => (
+						<PrimaryWatchlistCard
+							key={row.symbol}
+							row={row}
+							onRemoveSymbol={onRemoveSymbol}
+						/>
 					))}
 				</div>
-
-				<WatchlistTableOfContents
-					collapsedGroups={collapsedGroups}
-					onJumpToGroup={jumpToGroup}
-				/>
-			</div>
+			) : (
+				<div className="rounded-lg border border-dashed border-neutral-800 bg-neutral-950/60 px-4 py-8 text-center text-sm text-neutral-500">
+					No symbols selected
+				</div>
+			)}
 		</section>
+	);
+}
+
+function PrimaryWatchlistCard({
+	row,
+	onRemoveSymbol,
+}: {
+	row: WatchlistRow;
+	onRemoveSymbol: (symbol: string) => void;
+}) {
+	const isUp = row.changePercent >= 0;
+
+	return (
+		<article className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
+			<div className="mb-3 flex items-start justify-between gap-3">
+				<div>
+					<div className="font-semibold text-white text-lg leading-none">
+						{row.symbol}
+					</div>
+					<div className="mt-1 text-[10px] uppercase tracking-wider text-neutral-600">
+						{formatAssetClass(row.assetClass)}
+					</div>
+				</div>
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon-xs"
+					className="text-neutral-500 hover:bg-neutral-800 hover:text-white"
+					aria-label={`Remove ${row.symbol} from primary watchlist`}
+					title={`Remove ${row.symbol}`}
+					onClick={() => onRemoveSymbol(row.symbol)}
+				>
+					<X />
+				</Button>
+			</div>
+
+			<div className="mb-3 flex items-baseline justify-between gap-3">
+				<div className="font-semibold text-neutral-100 text-xl">
+					{formatPrice(row.price)}
+				</div>
+				<div
+					className={`font-medium text-sm ${isUp ? "text-green-400" : "text-red-400"}`}
+				>
+					{isUp ? "+" : ""}
+					{row.changePercent.toFixed(2)}%
+				</div>
+			</div>
+
+			<IntradaySparkline row={row} />
+
+			<div className="mt-3 grid grid-cols-2 gap-2 border-neutral-800 border-t pt-3 text-xs">
+				<div>
+					<div className="text-[10px] uppercase tracking-wider text-neutral-600">
+						Low
+					</div>
+					<div className="font-medium text-neutral-300">
+						{formatPrice(row.dayRange.low)}
+					</div>
+				</div>
+				<div className="text-right">
+					<div className="text-[10px] uppercase tracking-wider text-neutral-600">
+						High
+					</div>
+					<div className="font-medium text-neutral-300">
+						{formatPrice(row.dayRange.high)}
+					</div>
+				</div>
+			</div>
+		</article>
+	);
+}
+
+function IntradaySparkline({ row }: { row: WatchlistRow }) {
+	const isUp = row.changePercent >= 0;
+	const strokeColor = isUp ? "#4ade80" : "#f87171";
+	const fillColor = isUp
+		? "rgba(74, 222, 128, 0.12)"
+		: "rgba(248, 113, 113, 0.12)";
+	const values = Array.from({ length: 16 }, (_, index) => {
+		const wobble = ((hash(`${row.symbol}:spark:${index}`) % 100) - 50) / 100;
+		const trend = (row.changePercent / 100) * (index / 15);
+
+		return row.price * (1 + trend + wobble / 100);
+	});
+	const min = Math.min(...values);
+	const max = Math.max(...values);
+	const width = 220;
+	const height = 72;
+	const points = values.map((value, index) => {
+		const x = (index / (values.length - 1)) * width;
+		const y =
+			height - ((value - min) / Math.max(0.01, max - min)) * (height - 12) - 6;
+
+		return { x, y };
+	});
+	const linePath = points
+		.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+		.join(" ");
+	const areaPath = `${linePath} L ${width} ${height} L 0 ${height} Z`;
+
+	return (
+		<div className="h-20 rounded-md border border-neutral-800 bg-neutral-950/70 p-2">
+			<svg
+				className="h-full w-full"
+				viewBox={`0 0 ${width} ${height}`}
+				role="img"
+				aria-label={`${row.symbol} one day price graph`}
+				preserveAspectRatio="none"
+			>
+				<path d={areaPath} fill={fillColor} />
+				<path
+					d={linePath}
+					fill="none"
+					stroke={strokeColor}
+					strokeLinecap="round"
+					strokeLinejoin="round"
+					strokeWidth="2.5"
+				/>
+			</svg>
+		</div>
 	);
 }
 
@@ -327,11 +568,15 @@ function Metric({ label, value }: { label: string; value: number }) {
 function WatchlistGroupTable({
 	group,
 	isCollapsed,
+	primarySymbolSet,
 	onToggleCollapsed,
+	onTogglePrimarySymbol,
 }: {
 	group: WatchlistGroup;
 	isCollapsed: boolean;
+	primarySymbolSet: Set<string>;
 	onToggleCollapsed: (groupId: string) => void;
+	onTogglePrimarySymbol: (symbol: string) => void;
 }) {
 	const [sort, setSort] = useState<SortState>({
 		columnId: "changePercent",
@@ -436,7 +681,12 @@ function WatchlistGroupTable({
 							</thead>
 							<tbody>
 								{sortedRows.map((row) => (
-									<WatchlistTickerRow key={row.key} row={row} />
+									<WatchlistTickerRow
+										key={row.key}
+										row={row}
+										isPrimary={primarySymbolSet.has(row.symbol)}
+										onTogglePrimarySymbol={onTogglePrimarySymbol}
+									/>
 								))}
 							</tbody>
 						</table>
@@ -515,12 +765,47 @@ function ResizableHeaderCell({
 	);
 }
 
-function WatchlistTickerRow({ row }: { row: WatchlistRow }) {
+function WatchlistTickerRow({
+	row,
+	isPrimary,
+	onTogglePrimarySymbol,
+}: {
+	row: WatchlistRow;
+	isPrimary: boolean;
+	onTogglePrimarySymbol: (symbol: string) => void;
+}) {
 	const isUp = row.changePercent >= 0;
 
 	return (
 		<tr className="border-b border-neutral-900/60 text-xs transition-colors last:border-0 hover:bg-neutral-800/20">
-			<td className="px-4 py-3 font-semibold text-white">{row.symbol}</td>
+			<td className="px-4 py-3">
+				<div className="flex items-center gap-2">
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon-xs"
+						className={`border border-neutral-800 ${
+							isPrimary
+								? "bg-neutral-800 text-neutral-200 hover:bg-red-500/10 hover:text-red-300"
+								: "bg-neutral-950 text-neutral-500 hover:bg-green-500/10 hover:text-green-300"
+						}`}
+						aria-label={
+							isPrimary
+								? `Remove ${row.symbol} from primary watchlist`
+								: `Add ${row.symbol} to primary watchlist`
+						}
+						title={
+							isPrimary
+								? `Remove ${row.symbol} from primary watchlist`
+								: `Add ${row.symbol} to primary watchlist`
+						}
+						onClick={() => onTogglePrimarySymbol(row.symbol)}
+					>
+						{isPrimary ? <X /> : <Plus />}
+					</Button>
+					<span className="font-semibold text-white">{row.symbol}</span>
+				</div>
+			</td>
 			<td className="px-4 py-3 text-right text-neutral-200">
 				{formatPrice(row.price)}
 			</td>
