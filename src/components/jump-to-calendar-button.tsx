@@ -1,5 +1,5 @@
 import { ArrowUp } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "#/components/ui/button.tsx";
 
@@ -7,28 +7,60 @@ const JUMP_BUTTON_SCROLL_THRESHOLD = 520;
 
 export function JumpToCalendarButton() {
 	const [isVisible, setIsVisible] = useState(false);
+	const isVisibleRef = useRef(false);
 
 	useEffect(() => {
+		if (typeof window === "undefined") {
+			return;
+		}
+
+		let animationFrameId: number | null = null;
+
+		function setVisibleIfChanged(nextIsVisible: boolean) {
+			if (isVisibleRef.current === nextIsVisible) {
+				return;
+			}
+
+			isVisibleRef.current = nextIsVisible;
+			setIsVisible(nextIsVisible);
+		}
+
 		function updateVisibility() {
-			setIsVisible(window.scrollY > JUMP_BUTTON_SCROLL_THRESHOLD);
+			setVisibleIfChanged(window.scrollY > JUMP_BUTTON_SCROLL_THRESHOLD);
+		}
+
+		function handleScroll() {
+			if (animationFrameId !== null) {
+				return;
+			}
+
+			animationFrameId = window.requestAnimationFrame(() => {
+				animationFrameId = null;
+				updateVisibility();
+			});
 		}
 
 		updateVisibility();
-		window.addEventListener("scroll", updateVisibility, { passive: true });
+		window.addEventListener("scroll", handleScroll, { passive: true });
+		window.addEventListener("resize", handleScroll);
 
-		return () => window.removeEventListener("scroll", updateVisibility);
+		return () => {
+			window.removeEventListener("scroll", handleScroll);
+			window.removeEventListener("resize", handleScroll);
+
+			if (animationFrameId !== null) {
+				window.cancelAnimationFrame(animationFrameId);
+			}
+		};
 	}, []);
 
-	function jumpToCalendar() {
-		const calendar = document.getElementById("pnl-calendar");
-
-		if (calendar) {
-			calendar.scrollIntoView({ behavior: "smooth", block: "start" });
+	const jumpToTop = useCallback(() => {
+		if (typeof window === "undefined") {
 			return;
 		}
 
 		window.scrollTo({ top: 0, behavior: "smooth" });
-	}
+	}, []);
 
 	return (
 		<Button
@@ -40,11 +72,13 @@ export function JumpToCalendarButton() {
 					? "translate-y-0 opacity-100"
 					: "pointer-events-none translate-y-3 opacity-0"
 			}`}
-			aria-label="Jump to calendar"
-			title="Jump to calendar"
-			onClick={jumpToCalendar}
+			aria-hidden={!isVisible}
+			aria-label="Jump to top"
+			tabIndex={isVisible ? 0 : -1}
+			title="Jump to top"
+			onClick={jumpToTop}
 		>
-			<ArrowUp />
+			<ArrowUp aria-hidden="true" />
 		</Button>
 	);
 }
