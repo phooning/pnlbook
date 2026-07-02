@@ -1,0 +1,31 @@
+{
+  "projectName": "vite-project",
+  "mode": "file-router",
+  "typescript": true,
+  "packageManager": "bun",
+  "includeExamples": false,
+  "tailwind": true,
+  "addOnOptions": {
+    "drizzle": {
+      "database": "postgresql"
+    }
+  },
+  "envVarValues": {},
+  "git": false,
+  "install": true,
+  "routerOnly": false,
+  "version": 1,
+  "framework": "react",
+  "chosenAddOns": [
+    "biome",
+    "nitro",
+    "t3env",
+    "shadcn",
+    "db",
+    "tanstack-query",
+    "form",
+    "table",
+    "drizzle",
+    "compiler"
+  ]
+}
