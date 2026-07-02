@@ -1,5 +1,17 @@
-import { drizzle } from 'drizzle-orm/node-postgres'
+import { drizzle } from "drizzle-orm/node-postgres";
 
-import * as schema from './schema.ts'
+import * as schema from "./schema.ts";
 
-export const db = drizzle(process.env.DATABASE_URL!, { schema })
+export function getDb() {
+	const databaseUrl = process.env.DATABASE_URL;
+
+	if (!databaseUrl) {
+		throw new Error(
+			"DATABASE_URL is required before using the PnLBook database",
+		);
+	}
+
+	return drizzle(databaseUrl, { schema });
+}
+
+export type Db = ReturnType<typeof getDb>;
