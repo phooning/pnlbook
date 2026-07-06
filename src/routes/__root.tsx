@@ -2,8 +2,12 @@ import type { QueryClient } from "@tanstack/react-query";
 import {
 	createRootRouteWithContext,
 	HeadContent,
+	Outlet,
 	Scripts,
 } from "@tanstack/react-router";
+import { AppHeader } from "#/components/app-header.tsx";
+import { AccountSidebar } from "#/components/sidebar/account-sidebar.tsx";
+import { TooltipProvider } from "#/components/ui/tooltip.tsx";
 import appCss from "../styles.css?url";
 
 interface MyRouterContext {
@@ -31,8 +35,23 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			},
 		],
 	}),
+	component: WorkspaceRoot,
 	shellComponent: RootDocument,
 });
+
+function WorkspaceRoot() {
+	return (
+		<div className="min-h-screen bg-black text-neutral-300 antialiased">
+			<AppHeader />
+			<div className="flex flex-col lg:flex-row">
+				<AccountSidebar />
+				<main className="relative min-w-0 flex-1">
+					<Outlet />
+				</main>
+			</div>
+		</div>
+	);
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
 	return (
@@ -41,7 +60,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<HeadContent />
 			</head>
 			<body>
-				{children}
+				<TooltipProvider>{children}</TooltipProvider>
 				<Scripts />
 			</body>
 		</html>

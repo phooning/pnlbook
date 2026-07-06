@@ -6,12 +6,11 @@ import {
 
 export function AccountSidebar() {
 	return (
-		<aside className="flex shrink-0 flex-col gap-6 border-neutral-800 border-b bg-neutral-950/50 p-5 lg:sticky lg:top-0 lg:h-screen lg:w-72 lg:overflow-y-auto lg:border-r lg:border-b-0">
+		<aside className="flex shrink-0 flex-col gap-6 border-neutral-800 border-b bg-neutral-950/50 p-5 lg:sticky lg:top-[5.25rem] lg:h-[calc(100vh-5.25rem)] lg:w-72 lg:overflow-y-auto lg:border-r lg:border-b-0">
 			<div>
-				<h1 className="font-bold text-white text-xl">PnLBook</h1>
-				<p className="text-neutral-500 text-xs uppercase tracking-wider">
+				<h2 className="text-neutral-500 text-xs uppercase tracking-wider">
 					Account Overview
-				</p>
+				</h2>
 			</div>
 
 			<div className="space-y-2 border-neutral-800 border-b pb-4">

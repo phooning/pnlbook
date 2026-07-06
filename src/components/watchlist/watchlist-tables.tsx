@@ -2,6 +2,11 @@ import { ChevronDown, Plus, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Button } from "#/components/ui/button.tsx";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "#/components/ui/tooltip.tsx";
 
 import type {
 	ColumnDefinition,
@@ -17,7 +22,6 @@ import { columns, defaultColumnWidths } from "./watchlist-columns.ts";
 import {
 	formatGroupName,
 	formatPrice,
-	getSymbolLabel,
 	rangePercent,
 	sortRows,
 } from "./watchlist-utils.ts";
@@ -152,8 +156,8 @@ export function WatchlistGroupTable({
 		useState<Record<ColumnId, number>>(defaultColumnWidths);
 
 	const sortedRows = useMemo(
-		() => sortRows(group.rows, sort),
-		[group.rows, sort],
+		() => (isCollapsed ? [] : sortRows(group.rows, sort)),
+		[group.rows, sort, isCollapsed],
 	);
 	const tableWidth = columns.reduce(
 		(total, column) => total + columnWidths[column.id],
@@ -216,47 +220,49 @@ export function WatchlistGroupTable({
 				}`}
 			>
 				<div className="min-h-0 overflow-hidden">
-					<div className="overflow-x-auto">
-						<table
-							className="w-full border-collapse table-fixed text-left"
-							style={{ minWidth: tableWidth }}
-						>
-							<colgroup>
-								{columns.map((column) => (
-									<col
-										key={column.id}
-										style={{
-											width: `${(columnWidths[column.id] / tableWidth) * 100}%`,
-										}}
-									/>
-								))}
-							</colgroup>
-							<thead>
-								<tr className="border-b border-neutral-800 text-[10px] uppercase tracking-wider text-neutral-500">
+					{isCollapsed ? null : (
+						<div className="overflow-x-auto">
+							<table
+								className="w-full border-collapse table-fixed text-left"
+								style={{ minWidth: tableWidth }}
+							>
+								<colgroup>
 									{columns.map((column) => (
-										<ResizableHeaderCell
+										<col
 											key={column.id}
-											column={column}
-											isSorted={sort.columnId === column.id}
-											sortDirection={sort.direction}
-											onSort={updateSort}
-											onResize={resizeColumn}
+											style={{
+												width: `${(columnWidths[column.id] / tableWidth) * 100}%`,
+											}}
 										/>
 									))}
-								</tr>
-							</thead>
-							<tbody>
-								{sortedRows.map((row) => (
-									<WatchlistTickerRow
-										key={row.key}
-										row={row}
-										isPrimary={primarySymbolSet.has(row.symbol)}
-										onTogglePrimarySymbol={onTogglePrimarySymbol}
-									/>
-								))}
-							</tbody>
-						</table>
-					</div>
+								</colgroup>
+								<thead>
+									<tr className="border-b border-neutral-800 text-[10px] uppercase tracking-wider text-neutral-500">
+										{columns.map((column) => (
+											<ResizableHeaderCell
+												key={column.id}
+												column={column}
+												isSorted={sort.columnId === column.id}
+												sortDirection={sort.direction}
+												onSort={updateSort}
+												onResize={resizeColumn}
+											/>
+										))}
+									</tr>
+								</thead>
+								<tbody>
+									{sortedRows.map((row) => (
+										<WatchlistTickerRow
+											key={row.key}
+											row={row}
+											isPrimary={primarySymbolSet.has(row.symbol)}
+											onTogglePrimarySymbol={onTogglePrimarySymbol}
+										/>
+									))}
+								</tbody>
+							</table>
+						</div>
+					)}
 				</div>
 			</div>
 		</div>
@@ -341,6 +347,7 @@ function WatchlistTickerRow({
 	onTogglePrimarySymbol: (symbol: string) => void;
 }) {
 	const isUp = row.changePercent >= 0;
+	const displayNameTooltip = row.displayName.trim() || row.symbol;
 
 	return (
 		<tr className="border-b border-neutral-900/60 text-xs transition-colors last:border-0 hover:bg-neutral-800/20">
@@ -369,12 +376,31 @@ function WatchlistTickerRow({
 					>
 						{isPrimary ? <X /> : <Plus />}
 					</Button>
-					<span
-						className="font-semibold text-white"
-						title={getSymbolLabel(row)}
-					>
-						{row.symbol}
-					</span>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<span
+								className="cursor-help font-semibold text-white"
+								data-symbol={row.symbol}
+							>
+								{row.symbol}
+							</span>
+						</TooltipTrigger>
+						<TooltipContent
+							side="top"
+							align="start"
+							sideOffset={8}
+							className="border border-neutral-700 bg-neutral-950 px-3 py-2 text-left text-neutral-100 shadow-xl shadow-black/40"
+						>
+							<div className="flex flex-col gap-0.5">
+								<span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
+									{row.symbol}
+								</span>
+								<span className="max-w-64 text-xs leading-snug text-neutral-100">
+									{displayNameTooltip}
+								</span>
+							</div>
+						</TooltipContent>
+					</Tooltip>
 				</div>
 			</td>
 			<td className="px-4 py-3 text-right text-neutral-200">

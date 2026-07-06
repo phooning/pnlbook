@@ -2,6 +2,7 @@ import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Button } from "#/components/ui/button.tsx";
+import { workspaceColorScheme } from "#/constants/color-scheme.ts";
 import { calendarPnl } from "#/data/bootstrap.ts";
 import { cn } from "#/lib/utils.ts";
 
@@ -410,11 +411,11 @@ function formatPercent(current: number, previous: number) {
 
 function valueColor(value: number, neutral = "text-neutral-500") {
 	if (value > 0) {
-		return "text-green-400";
+		return workspaceColorScheme.accentText;
 	}
 
 	if (value < 0) {
-		return "text-red-400";
+		return workspaceColorScheme.negativeText;
 	}
 
 	return neutral;

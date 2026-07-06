@@ -24,7 +24,13 @@ import {
 } from "./watchlist-utils.ts";
 
 export function UniverseWatchlist() {
-	const [collapsedGroups, setCollapsedGroups] = useState<CollapsedGroups>({});
+	const [collapsedGroups, setCollapsedGroups] = useState<CollapsedGroups>(() =>
+		Object.fromEntries(
+			watchlistSections.flatMap((section) =>
+				section.groups.map((group) => [group.id, true]),
+			),
+		),
+	);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [primarySymbols, setPrimarySymbols] = useState(
 		() => defaultPrimarySymbols,
@@ -56,20 +62,28 @@ export function UniverseWatchlist() {
 	function toggleGroupCollapsed(groupId: string) {
 		setCollapsedGroups((current) => ({
 			...current,
-			[groupId]: !current[groupId],
+			[groupId]: !(current[groupId] ?? true),
 		}));
 	}
 
 	function jumpToGroup(groupId: string) {
-		setCollapsedGroups((current) => ({
-			...current,
-			[groupId]: false,
-		}));
+		setCollapsedGroups((current) => {
+			if (current[groupId] === false) {
+				return current;
+			}
 
-		const target = document.getElementById(getGroupDomId(groupId));
-		if (target) {
-			scrollToElementWithEase(target);
-		}
+			return {
+				...current,
+				[groupId]: false,
+			};
+		});
+
+		requestAnimationFrame(() => {
+			const target = document.getElementById(getGroupDomId(groupId));
+			if (target) {
+				scrollToElementWithEase(target);
+			}
+		});
 	}
 
 	function addPrimarySymbol(symbol: string) {
@@ -169,7 +183,7 @@ export function UniverseWatchlist() {
 											<WatchlistGroupTable
 												key={group.id}
 												group={group}
-												isCollapsed={collapsedGroups[group.id] ?? false}
+												isCollapsed={collapsedGroups[group.id] ?? true}
 												primarySymbolSet={primarySymbolSet}
 												onToggleCollapsed={toggleGroupCollapsed}
 												onTogglePrimarySymbol={togglePrimarySymbol}
